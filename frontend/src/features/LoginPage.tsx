@@ -21,7 +21,7 @@ export function LoginPage() {
         <h1 className="text-center text-2xl font-bold">Login</h1>
 
         <a
-          href="/auth/google"
+          href={`${import.meta.env.VITE_API_URL}/auth/google`}
           className="mt-6 flex items-center justify-center gap-2 rounded-lg bg-pine-soft px-4 py-2.5 text-xs font-medium hover:brightness-95"
         >
           <svg width="14" height="14" viewBox="0 0 48 48" aria-hidden>
