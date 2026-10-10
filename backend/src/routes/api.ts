@@ -63,21 +63,24 @@ apiRouter.get("/config", (_req, res) =>
 // ---------- Schedule ----------
 const scheduleSchema = z.object({
   subject: z.string().trim().min(1).max(300),
-  body: z.string().trim().min(1).max(20000),
+  body: z.string().trim().min(1).max(100000),
   emails: z.array(z.string().email()).min(1).max(20000),
   startTime: z.string().datetime({ offset: true }),
   delayBetweenMs: z.number().int().min(0).max(24 * 3600 * 1000),
   hourlyLimit: z.number().int().min(1).max(100000),
+  senderId: z.number().int().positive().optional(), // omit => rotate across all senders
 });
 
 apiRouter.post("/schedule", async (req, res) => {
   const parsed = scheduleSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
-  const { subject, body, startTime, delayBetweenMs, hourlyLimit } = parsed.data;
+  const { subject, body, startTime, delayBetweenMs, hourlyLimit, senderId } = parsed.data;
   const userId: string = res.locals.userId;
 
-  const senders = await listSenders(userId);
-  if (!senders.length) return res.status(503).json({ error: "No sender accounts available (Ethereal unreachable?)" });
+  const allSenders = await listSenders(userId);
+  if (!allSenders.length) return res.status(503).json({ error: "No sender accounts available (Ethereal unreachable?)" });
+  const senders = senderId ? allSenders.filter((s) => s.id === senderId) : allSenders;
+  if (!senders.length) return res.status(400).json({ error: "Unknown sender" });
 
   const recipients = [...new Set(parsed.data.emails.map((e) => e.toLowerCase()))];
   const start = Math.max(new Date(startTime).getTime(), Date.now());
@@ -120,6 +123,16 @@ apiRouter.post("/schedule", async (req, res) => {
 });
 
 // ---------- List / search ----------
+apiRouter.get("/emails/counts", async (_req, res) => {
+  const { rows } = await pool.query(
+    `select count(*) filter (where status in ('scheduled','sending'))::int as scheduled,
+            count(*) filter (where status in ('sent','failed'))::int as sent
+       from emails where user_id = $1`,
+    [res.locals.userId],
+  );
+  res.json(rows[0]);
+});
+
 apiRouter.get("/emails", async (req, res) => {
   const userId: string = res.locals.userId;
   const tab = req.query.tab === "sent" ? "sent" : "scheduled";

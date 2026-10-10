@@ -79,11 +79,13 @@ Note: Slack OAuth was tested through an ngrok tunnel (`ngrok http 4000`) with `B
 
 **Backend:** scheduler (BullMQ delayed jobs, no cron) / persistence (Redis AOF + reconcile on boot) / rate limiting (Redis Lua counters, per sender, configurable) / concurrency (configurable) / min delay between sends (Redis slot reservation) / Slack OAuth + live notification on rate limit / Elasticsearch indexing + search / live Bull Board dashboard / Google OAuth / idempotency.
 
-**Frontend:** Google login, header (name, email, avatar, logout), tabs (Scheduled / Sent), compose modal (subject, body, CSV/text upload with detected-email count, start time, delay, hourly limit), tables with loading + empty + error states, toasts, search, auto-refresh, Slack connect/disconnect, reusable UI components (`components/ui`), typed API layer.
+**Frontend (built to the provided Figma screens):** Login screen (Login with Google, plus the email/password fields from the design), sidebar layout with the ONB logo, user card (name, email, avatar; menu with Slack connect, queue monitor and logout), Compose button, and Scheduled / Sent navigation with live counts. List view with search, filter and refresh, orange scheduled-time badges and grey "Sent" badges, star toggle, and an email detail view. Full-page Compose screen with From selector, recipient chips (+N overflow) and Upload List (CSV/text, shows the number of addresses detected), subject, delay between emails, hourly limit, a rich text editor, and a Send Later popover (date/time picker and quick options). Loading, empty and error states, toasts, reusable UI components (`components/ui`, `components/compose`), typed API layer.
 
 ## Assumptions, shortcuts and trade-offs
 
-- The Figma design was not used pixel-for-pixel: the UI follows the written requirements with my own styling. Colors and layout are easy to adjust in `tailwind.config.js` and the components.
+- The UI follows the Figma screens. Deviations: the email/password login fields are shown as in the design but are not wired up (the assignment requires real Google OAuth only), so submitting them shows a message pointing to Google login. The paperclip/attachments feature in the compose design is not implemented because it is not in the written requirements. Star state is stored per browser (localStorage).
+- "From" can be a single sender or "All senders (rotate)", which round-robins across the user's Ethereal accounts so per-sender rate limiting is visible.
+- The compose editor produces HTML, which is sent as the email's HTML part (with a plain-text fallback). Elasticsearch indexes the plain-text version of the body.
 - Hour windows are UTC clock hours (simple and deterministic), not rolling 60-minute windows.
 - A job that crashes mid-send (row left in `sending`) is marked `failed` by `reconcile()` after 10 minutes instead of being retried. This chooses at-most-once over at-least-once so an email is never duplicated.
 - Bull Board is not behind authentication (acceptable for an assignment; it should be protected in production).

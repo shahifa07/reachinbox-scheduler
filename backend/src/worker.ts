@@ -4,7 +4,7 @@ import { config } from "./config";
 import { pool } from "./db";
 import { redis } from "./redis";
 import { emailQueue, EmailJobData, QUEUE_NAME } from "./queue";
-import { reindex } from "./services/emails";
+import { reindex, stripTags } from "./services/emails";
 import { notifyRateLimit } from "./services/slack";
 
 /**
@@ -119,7 +119,8 @@ async function processEmail(job: Job<EmailJobData>, token?: string) {
       from: `"ReachInbox" <${e.sender_email}>`,
       to: e.to_email,
       subject: e.subject,
-      text: e.body,
+      html: e.body,
+      text: stripTags(e.body),
     });
     const preview = nodemailer.getTestMessageUrl(info) || null;
     await pool.query(

@@ -5,7 +5,7 @@ import type { EmailDto } from "./services/emails";
 const INDEX = "emails";
 const es = new Client({ node: config.esUrl });
 
-export type EmailDoc = EmailDto & { userId: string };
+export type EmailDoc = EmailDto & { userId: string; bodyText?: string };
 
 export async function initSearch() {
   try {
@@ -22,6 +22,7 @@ export async function initSearch() {
             toEmail: { type: "text" },
             subject: { type: "text" },
             body: { type: "text" },
+            bodyText: { type: "text" },
           },
         },
       });
@@ -51,13 +52,13 @@ export async function searchEmails(userId: string, q: string, statuses?: string[
     query: {
       bool: {
         filter,
-        must: [{ multi_match: { query: q, fields: ["toEmail", "subject", "body"], fuzziness: "AUTO" } }],
+        must: [{ multi_match: { query: q, fields: ["toEmail", "subject", "bodyText"], fuzziness: "AUTO" } }],
       },
     },
     sort: [{ scheduledAt: "asc" }],
   });
   return res.hits.hits.map((h) => {
-    const { userId: _u, ...dto } = h._source as EmailDoc;
+    const { userId: _u, bodyText: _b, ...dto } = h._source as EmailDoc;
     return dto;
   });
 }

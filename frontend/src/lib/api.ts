@@ -1,4 +1,4 @@
-import type { AppConfig, EmailItem, SchedulePayload, SlackStatus, Tab, User } from "../types";
+import type { AppConfig, Counts, EmailItem, SchedulePayload, Sender, SlackStatus, Tab, User } from "../types";
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -20,6 +20,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const api = {
   me: () => request<User>("/api/me"),
   config: () => request<AppConfig>("/api/config"),
+  senders: () => request<Sender[]>("/api/senders"),
+  counts: () => request<Counts>("/api/emails/counts"),
   logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
   emails: (tab: Tab, q: string) =>
     request<{ items: EmailItem[] }>(`/api/emails?tab=${tab}&q=${encodeURIComponent(q)}`).then((r) => r.items),

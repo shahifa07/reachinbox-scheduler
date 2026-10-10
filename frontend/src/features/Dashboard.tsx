@@ -1,23 +1,25 @@
 import { useEffect, useState } from "react";
-import { Button } from "../components/ui/Button";
 import { useToast } from "../components/ui/Toast";
-import type { Tab, User } from "../types";
-import { ComposeModal } from "./ComposeModal";
-import { EmailsPanel } from "./EmailsPanel";
-import { Header } from "./Header";
+import { useCounts } from "../hooks/useCounts";
+import { useStarred } from "../hooks/useStarred";
+import { api } from "../lib/api";
+import type { EmailItem, Sender, Tab, User } from "../types";
+import { ComposePage } from "./ComposePage";
+import { EmailDetail } from "./EmailDetail";
+import { EmailList } from "./EmailList";
+import { Sidebar } from "./Sidebar";
+
+type View = { name: "list" } | { name: "compose" } | { name: "email"; email: EmailItem };
 
 export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const toast = useToast();
+  const [view, setView] = useState<View>({ name: "list" });
   const [tab, setTab] = useState<Tab>("scheduled");
-  const [search, setSearch] = useState("");
-  const [q, setQ] = useState("");
-  const [composing, setComposing] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [senders, setSenders] = useState<Sender[]>([]);
+  const { counts, refresh: refreshCounts } = useCounts();
+  const { starred, toggle } = useStarred();
 
-  useEffect(() => {
-    const t = setTimeout(() => setQ(search.trim()), 300); // debounce search
-    return () => clearTimeout(t);
-  }, [search]);
+  useEffect(() => { api.senders().then(setSenders).catch(() => undefined); }, []);
 
   // Surface the result of the Slack OAuth redirect, then clean the URL.
   useEffect(() => {
@@ -29,44 +31,44 @@ export function Dashboard({ user, onLogout }: { user: User; onLogout: () => void
     window.history.replaceState({}, "", window.location.pathname);
   }, [toast]);
 
+  const toList = () => setView({ name: "list" });
+
+  if (view.name === "compose") {
+    return (
+      <ComposePage
+        senders={senders}
+        onBack={toList}
+        onScheduled={() => { refreshCounts(); setTab("scheduled"); toList(); }}
+      />
+    );
+  }
+
+  if (view.name === "email") {
+    return (
+      <EmailDetail
+        email={view.email}
+        user={user}
+        starred={starred.has(view.email.id)}
+        onToggleStar={() => toggle(view.email.id)}
+        onBack={toList}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen">
-      <Header user={user} onLogout={onLogout} />
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div role="tablist" className="flex gap-1 rounded-lg bg-white p-1 ring-1 ring-line">
-            {(["scheduled", "sent"] as Tab[]).map((t) => (
-              <button
-                key={t}
-                role="tab"
-                aria-selected={tab === t}
-                onClick={() => setTab(t)}
-                className={`rounded-md px-4 py-1.5 text-sm font-semibold capitalize ${
-                  tab === t ? "bg-pine text-white" : "text-muted hover:text-ink"
-                }`}
-              >
-                {t} emails
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-3">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search recipient or subject"
-              aria-label="Search emails"
-              className="w-64 rounded-lg border border-line bg-white px-3 py-2 text-sm"
-            />
-            <Button onClick={() => setComposing(true)}>Compose new email</Button>
-          </div>
-        </div>
-
-        <section className="rounded-2xl border border-line bg-white">
-          <EmailsPanel key={`${tab}-${refreshKey}`} tab={tab} q={q} refreshKey={refreshKey} />
-        </section>
+    <div className="flex min-h-screen flex-col md:flex-row">
+      <Sidebar
+        user={user}
+        counts={counts}
+        tab={tab}
+        onTab={setTab}
+        onCompose={() => setView({ name: "compose" })}
+        onLogout={onLogout}
+      />
+      <main className="min-w-0 flex-1 px-4 py-4 md:px-6">
+        {/* key resets search + filter when switching tabs */}
+        <EmailList key={tab} tab={tab} starred={starred} onToggleStar={toggle} onOpen={(email) => setView({ name: "email", email })} />
       </main>
-
-      {composing && <ComposeModal onClose={() => setComposing(false)} onScheduled={() => { setTab("scheduled"); setRefreshKey((k) => k + 1); }} />}
     </div>
   );
 }

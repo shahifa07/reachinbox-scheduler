@@ -15,6 +15,10 @@ export interface EmailDto {
   previewUrl: string | null;
 }
 
+/** Plain text of an HTML body (used for search indexing and the text/plain email part). */
+export const stripTags = (html: string) =>
+  html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+
 export const toDto = (r: any): EmailDto => ({
   id: r.id,
   toEmail: r.to_email,
@@ -38,5 +42,5 @@ export async function reindex(ids: string[]) {
       where e.id = any($1::uuid[])`,
     [ids],
   );
-  await indexEmails(rows.map((r) => ({ ...toDto(r), userId: r.user_id })));
+  await indexEmails(rows.map((r) => ({ ...toDto(r), userId: r.user_id, bodyText: stripTags(r.body) })));
 }
