@@ -41,7 +41,7 @@ authRouter.get(
     const token = jwt.sign({ sub: user.id }, config.jwtSecret, { expiresIn: "7d" });
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: config.frontendUrl.startsWith("https") ? "none" : "lax",
       secure: config.frontendUrl.startsWith("https"),
       maxAge: 7 * 24 * 3600 * 1000,
     });
