@@ -36,7 +36,14 @@ export function UserMenu({ user, onLogout }: { user: User; onLogout: () => void 
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div role="menu" className="absolute left-0 right-0 top-full z-20 mt-2 rounded-xl border border-line bg-white p-1.5 text-xs shadow-lg">
-            <a href="/admin/queues" target="_blank" rel="noreferrer" className={item}>Queue monitor</a>
+            <a
+  href={`${import.meta.env.VITE_API_URL}/admin/queues`}
+  target="_blank"
+  rel="noreferrer"
+  className={item}
+>
+  Queue monitor
+</a>
 
             {slack?.connected ? (
               <div className={`${item} justify-between`}>
