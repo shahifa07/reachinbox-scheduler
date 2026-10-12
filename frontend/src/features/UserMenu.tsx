@@ -54,7 +54,7 @@ export function UserMenu({ user, onLogout }: { user: User; onLogout: () => void 
               </div>
             ) : (
               // Full-page navigation: the backend redirects to Slack's real OAuth authorize screen.
-              <a href="/api/slack/connect" className={item}>Connect Slack</a>
+              <a href={`${import.meta.env.VITE_API_URL}/api/slack/connect`} className={item}>Connect Slack</a>
             )}
 
             <button onClick={onLogout} className={item}>
